@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediaLog</title>
+<style>
+/* ── RESET ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+button{cursor:pointer;} input,select,textarea{font:inherit;}
+
+/* ── XP TOKENS ── */
+:root{
+  --bg:     #ece9d8;
+  --white:  #ffffff;
+  --text:   #000000;
+  --dim:    #555555;
+  --hi:     #ffffff;
+  --md:     #aca899;
+  --dk:     #716f64;
+  --title1: #0a246a;
+  --title2: #a6caf0;
+  --sel:    #2166b2;
+  --hover:  #dff0ff;
+  --hbd:    #0078d4;
+  --act:    #c8dff5;
+  --font:   Tahoma,'Segoe UI',Arial,sans-serif;
+  --sz:     11px;
+  --c-movie:#b00000;--c-book:#005eb0;--c-tv:#6a00aa;
+  --c-album:#008040;--c-game:#c05800;
+}
+
+/* ── DESKTOP ── */
+body{
+  background: #3a6ea5;
+  min-height:100vh;font-family:var(--font);font-size:var(--sz);
+  display:flex;flex-direction:column;align-items:center;
+  padding:16px 16px 48px;
+}
+
+/* ── LOADING ── */
+#loading{
+  position:fixed;inset:0;background:#3a6ea5;
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:14px;z-index:999;
+}
+#loading.hidden{display:none;}
+.ld-title{color:#fff;font-size:15px;font-weight:bold;text-shadow:1px 1px 2px rgba(0,0,0,.5);}
+.ld-track{width:200px;height:14px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.3);overflow:hidden;}
+.ld-bar{height:100%;width:55%;background:#3dbcf5;animation:ldbar 1.4s ease-in-out infinite;}
+@keyframes ldbar{0%{transform:translateX(-100%);}100%{transform:translateX(350%);}}
+
+/* ── XP WINDOW ── */
+.xp-win{
+  width:100%;max-width:1060px;
+  background:var(--bg);
+  border:1px solid var(--dk);
+  border-top-left-radius:8px;border-top-right-radius:8px;
+  box-shadow:inset 0 0 0 1px var(--hi), 2px 3px 10px rgba(0,0,0,.55);
+  display:flex;flex-direction:column;
+}
+
+/* ── TITLE BAR ── */
+.xp-title{
+  background:linear-gradient(to right,var(--title1) 0%,#1a5fd4 45%,var(--title2) 100%);
+  padding:4px 6px;display:flex;align-items:center;gap:6px;
+  border-radius:7px 7px 0 0;user-select:none;
+}
+.ti-icon{font-size:15px;color:#fff;}
+.ti-text{flex:1;color:#fff;font-weight:bold;font-size:12px;text-shadow:1px 1px 2px rgba(0,0,0,.5);}
+.ti-btns{display:flex;gap:2px;}
+.ti-btn{
+  width:21px;height:19px;border-radius:3px;
+  border:1px solid rgba(0,0,0,.4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:bold;color:#fff;
+  text-shadow:0 1px 1px rgba(0,0,0,.4);
+  background:linear-gradient(to bottom,#68aef8,#3b83e0);
+}
+.ti-btn:hover{background:linear-gradient(to bottom,#82c0ff,#5098f0);}
+.ti-btn.close{background:linear-gradient(to bottom,#f87070,#d43030);}
+.ti-btn.close:hover{background:linear-gradient(to bottom,#ff9090,#e84040);}
+
+/* ── APP AREA ── */
+#app{display:flex;flex-direction:column;min-height:580px;}
+
+/* ── TOOLBAR ── */
+.xp-toolbar{
+  background:var(--bg);
+  border-bottom:1px solid var(--md);
+  padding:3px 6px;display:flex;align-items:center;gap:2px;flex-wrap:wrap;
+}
+.xp-sep{width:1px;height:22px;background:var(--md);margin:0 4px;}
+.tb-btn{
+  padding:3px 10px;background:transparent;
+  border:1px solid transparent;border-radius:2px;
+  font:var(--sz) var(--font);color:var(--text);
+  display:flex;align-items:center;gap:4px;white-space:nowrap;
+}
+.tb-btn:hover{background:var(--hover);border-color:var(--hbd);}
+.tb-btn:active,.tb-btn.active{
+  background:var(--act);border-color:var(--hbd);
+  box-shadow:inset 1px 1px 2px rgba(0,0,0,.15);
+}
+.add-btn{margin-left:auto;}
+
+/* ── ADDRESS BAR ── */
+.xp-address{
+  background:var(--bg);border-bottom:1px solid var(--md);
+  padding:3px 8px;display:flex;align-items:center;gap:8px;
+}
+.addr-lbl{color:var(--dim);font-weight:bold;}
+.addr-box{
+  flex:1;max-width:380px;background:var(--white);
+  border:1px solid;border-color:var(--dk) var(--hi) var(--hi) var(--dk);
+  padding:2px 6px;font:var(--sz) var(--font);
+}
+.addr-box:focus{outline:2px solid var(--hbd);outline-offset:-1px;}
+
+/* ── MAIN CONTENT ── */
+.xp-main{
+  flex:1;padding:10px;
+  background:var(--white);margin:4px;
+  border:1px solid;border-color:var(--dk) var(--hi) var(--hi) var(--dk);
+}
+
+/* ── STATUS BAR ── */
+.xp-status{
+  background:var(--bg);border-top:1px solid var(--md);
+  padding:2px 8px;display:flex;gap:0;font-size:10px;color:var(--dim);
+}
+.sseg{border-right:1px solid var(--md);padding:0 10px 0 0;margin-right:10px;}
+.sseg:last-child{border-right:none;}
+
+/* ── EXPLORER LIST ── */
+.xp-list{width:100%;border-collapse:collapse;}
+.xp-list th{
+  background:var(--bg);border:1px solid var(--md);
+  padding:3px 8px;font:bold var(--sz) var(--font);
+  text-align:left;cursor:pointer;user-select:none;white-space:nowrap;
+}
+.xp-list th:hover{background:var(--hover);}
+.xp-list tr:nth-child(even){background:#f5f3ee;}
+.xp-list tr:hover td{background:#d3e8ff;}
+.xp-list td{
+  padding:3px 8px;border-bottom:1px solid #e8e5dc;
+  font:var(--sz) var(--font);vertical-align:middle;
+}
+.col-poster{width:44px;padding:2px 4px;}
+.col-title{cursor:pointer;}
+.col-title:hover{text-decoration:underline;color:var(--sel);}
+.poster-thumb{width:36px;height:50px;object-fit:cover;display:block;}
+.poster-ph{
+  width:36px;height:50px;background:var(--bg);
+  border:1px solid var(--md);display:flex;
+  align-items:center;justify-content:center;font-size:18px;
+}
+.type-badge{
+  font-size:10px;padding:1px 5px;border-radius:2px;
+  font-weight:bold;color:#fff;white-space:nowrap;
+}
+.type-movie{background:var(--c-movie);}
+.type-book{background:var(--c-book);}
+.type-tv{background:var(--c-tv);}
+.type-album{background:var(--c-album);}
+.type-game{background:var(--c-game);}
+.status-badge{
+  font-size:10px;padding:1px 5px;border-radius:2px;
+  border:1px solid var(--md);background:var(--bg);white-space:nowrap;
+}
+.s-completed{background:#d4f4d4;border-color:#4aaa4a;color:#1a6a1a;}
+.s-watching{background:#fff4cc;border-color:#c8a000;color:#7a5000;}
+.s-want{background:#e8e8e8;border-color:#999;color:#444;}
+.s-dropped{background:#ffe0e0;border-color:#cc4444;color:#882222;}
+.stars{color:#c8a000;letter-spacing:1px;}
+.fav-mark{color:#cc2266;}
+.dim{color:#aaa;}
+.del-btn{
+  padding:2px 7px;background:var(--bg);
+  border:1px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
+  font:var(--sz) var(--font);color:var(--text);
+}
+.del-btn:hover{background:#ffe0e0;border-color:#cc4444;color:#882222;}
+.del-btn:active{border-color:var(--dk) var(--hi) var(--hi) var(--dk);}
+
+/* ── XP GROUP BOX ── */
+.xp-group{background:var(--bg);border:1px solid var(--md);margin-bottom:10px;}
+.xp-group-title{
+  background:linear-gradient(to right,#0058aa,#4090e0);
+  color:#fff;font-weight:bold;font-size:11px;padding:3px 8px;
+}
+.group-body{padding:8px 10px;}
+
+/* ── DETAIL VIEW ── */
+.detail-layout{display:flex;gap:14px;}
+.detail-poster-col{flex-shrink:0;width:165px;}
+.detail-poster{width:155px;display:block;border:1px solid var(--md);box-shadow:2px 2px 4px rgba(0,0,0,.2);}
+.detail-poster-ph{
+  width:155px;height:230px;background:var(--bg);
+  border:1px solid var(--md);display:flex;
+  align-items:center;justify-content:center;
+  font-size:52px;color:var(--md);
+}
+.detail-info{flex:1;}
+.detail-title{font-size:15px;font-weight:bold;margin-bottom:10px;}
+.prop-table{width:100%;border-collapse:collapse;}
+.prop-table td{
+  padding:4px 8px;border-bottom:1px solid var(--md);
+  font:var(--sz) var(--font);vertical-align:top;
+}
+.prop-table td:first-child{
+  font-weight:bold;width:90px;background:#f5f3ee;
+  white-space:nowrap;border-right:1px solid var(--md);
+}
+.prop-table tr:last-child td{border-bottom:none;}
+.detail-notes{padding:8px 10px;white-space:pre-wrap;line-height:1.6;font:var(--sz) var(--font);}
+.detail-actions{display:flex;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid var(--md);}
+
+/* ── BUTTONS ── */
+.xp-btn{
+  padding:4px 14px;background:var(--bg);
+  border:1px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
+  font:var(--sz) var(--font);color:var(--text);
+}
+.xp-btn:hover{background:var(--hover);border-color:var(--hbd);}
+.xp-btn:active{border-color:var(--dk) var(--hi) var(--hi) var(--dk);background:var(--act);}
+.xp-btn.primary{background:#dff0ff;border-color:var(--hbd);}
+.xp-btn.primary:hover{background:#c8e4ff;}
+.xp-btn.danger{background:#ffe0e0;border-color:var(--hi) #cc4444 #cc4444 var(--hi);color:#882222;}
+.xp-btn.danger:hover{background:#ffcccc;border-color:#cc0000;}
+
+/* ── ADD FORM ── */
+.form-area{max-width:540px;}
+.type-selector{display:flex;gap:4px;flex-wrap:wrap;padding:8px;}
+.type-btn{
+  padding:4px 12px;background:var(--bg);
+  border:1px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
+  font:var(--sz) var(--font);color:var(--text);
+}
+.type-btn:hover{background:var(--hover);border-color:var(--hbd);}
+.type-btn.active{
+  background:var(--act);border-color:var(--hbd);
+  font-weight:bold;box-shadow:inset 1px 1px 2px rgba(0,0,0,.15);
+}
+.frow{
+  display:flex;align-items:center;padding:5px 8px;gap:8px;
+  border-bottom:1px solid var(--md);
+}
+.frow:last-child{border-bottom:none;}
+.poster-frow{min-height:42px;}
+.flbl{font-weight:bold;width:88px;flex-shrink:0;font-size:var(--sz);}
+.flbl.req::after{content:'*';color:#cc0000;margin-left:2px;}
+.xp-input,.xp-select,.xp-textarea{
+  background:var(--white);border:1px solid;
+  border-color:var(--dk) var(--hi) var(--hi) var(--dk);
+  padding:3px 6px;font:var(--sz) var(--font);color:var(--text);flex:1;
+}
+.xp-input:focus,.xp-select:focus,.xp-textarea:focus{
+  outline:2px solid var(--hbd);outline-offset:-1px;
+}
+.xp-textarea{resize:vertical;min-height:60px;}
+.form-actions{
+  display:flex;gap:8px;padding:8px;
+  background:var(--bg);border:1px solid var(--md);border-top:none;
+  justify-content:flex-end;
+}
+
+/* ── STATS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;}
+.stat-box{
+  background:var(--bg);border:1px solid var(--md);
+  padding:14px 10px;text-align:center;
+  box-shadow:inset 1px 1px 0 var(--hi);
+}
+.snum{font-size:26px;font-weight:bold;color:var(--title1);line-height:1;margin-bottom:4px;}
+.slbl{font-size:10px;color:var(--dim);}
+.bar-table{width:100%;border-collapse:collapse;padding:6px 8px;}
+.bar-table td{padding:3px 8px;font:var(--sz) var(--font);}
+.bar-lbl{width:90px;font-weight:bold;}
+.bar-cnt{width:32px;text-align:right;color:var(--dim);}
+.bar-track{
+  height:14px;background:var(--bg);
+  border:1px solid var(--md);overflow:hidden;
+  box-shadow:inset 1px 1px 2px rgba(0,0,0,.1);
+}
+.bar-fill{height:100%;transition:width .4s;}
+.bf-movie{background:linear-gradient(to bottom,#ff8080,#bb2020);}
+.bf-book{background:linear-gradient(to bottom,#6090ff,#1040aa);}
+.bf-tv{background:linear-gradient(to bottom,#c080ff,#6020aa);}
+.bf-album{background:linear-gradient(to bottom,#50dd80,#108040);}
+.bf-game{background:linear-gradient(to bottom,#ffa040,#c05000);}
+.bf-completed{background:linear-gradient(to bottom,#6ed86e,#1a8a1a);}
+.bf-watching{background:linear-gradient(to bottom,#ffe060,#c88000);}
+.bf-want{background:linear-gradient(to bottom,#c8c8c8,#888);}
+.bf-dropped{background:linear-gradient(to bottom,#ff8080,#cc2020);}
+
+/* ── EMPTY STATE ── */
+.xp-empty{padding:50px 20px;text-align:center;color:var(--dim);}
+.xp-empty-icon{font-size:48px;margin-bottom:12px;color:var(--md);}
+.xp-empty-text{font-size:13px;line-height:1.7;}
+
+/* ── AUTOCOMPLETE ── */
+.ac-wrap{position:relative;flex:1;}
+.ac-drop{
+  position:absolute;top:calc(100% + 2px);left:0;right:0;
+  background:var(--white);border:1px solid var(--dk);
+  z-index:300;max-height:280px;overflow-y:auto;display:none;
+  box-shadow:2px 3px 6px rgba(0,0,0,.35);
+}
+.ac-item{
+  display:flex;align-items:center;gap:8px;padding:5px 8px;
+  cursor:pointer;border-bottom:1px solid #e8e5dc;
+  font:var(--sz) var(--font);
+}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:hover,.ac-item.ac-on{background:var(--sel);color:#fff;}
+.ac-item:hover .ac-sub,.ac-item.ac-on .ac-sub{color:#cce0ff;}
+.ac-thumb{width:28px;height:40px;object-fit:cover;border:1px solid var(--md);flex-shrink:0;}
+.ac-ph{width:28px;height:40px;background:var(--bg);border:1px solid var(--md);
+  display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.ac-name{font-size:11px;font-weight:bold;}
+.ac-sub{font-size:10px;color:var(--dim);}
+
+/* ── POSTER MODAL ── */
+.p-modal{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.55);z-index:400;
+  align-items:center;justify-content:center;
+}
+.p-modal.open{display:flex;}
+.p-win{
+  background:var(--bg);
+  border:2px solid var(--dk);
+  box-shadow:4px 4px 14px rgba(0,0,0,.55);
+  max-width:580px;width:92%;
+}
+.p-title{
+  background:linear-gradient(to right,var(--title1),var(--title2));
+  color:#fff;font-weight:bold;font-size:12px;
+  padding:5px 8px;display:flex;justify-content:space-between;align-items:center;
+}
+.p-body{
+  padding:10px;display:flex;flex-wrap:wrap;gap:8px;
+  max-height:380px;overflow-y:auto;
+  background:var(--white);margin:4px;
+  border:1px solid var(--md);
+}
+.p-opt{cursor:pointer;border:2px solid var(--md);padding:2px;}
+.p-opt:hover{border-color:var(--hbd);}
+.p-opt.sel{border-color:var(--hbd);box-shadow:0 0 0 1px var(--hbd);}
+.p-opt img{width:76px;height:114px;object-fit:cover;display:block;}
+.p-foot{
+  padding:8px;display:flex;justify-content:flex-end;gap:8px;
+  border-top:1px solid var(--md);
+}
+
+/* ── XP TASKBAR ── */
+.xp-bar{
+  position:fixed;bottom:0;left:0;right:0;height:40px;
+  background:linear-gradient(to bottom,#1c6fc5,#1463bc 8%,#1567c8 92%,#105bbf);
+  border-top:1px solid #3a92ff;
+  display:flex;align-items:center;padding:0 4px;gap:4px;z-index:500;
+}
+.start-btn{
+  background:linear-gradient(to bottom,#5db842,#3a9a22);
+  border:1px solid #2a8a12;border-radius:12px;
+  color:#fff;font:bold 12px Tahoma;padding:4px 14px 4px 10px;
+  display:flex;align-items:center;gap:4px;
+  box-shadow:0 1px 3px rgba(0,0,0,.4);
+}
+.start-btn:hover{background:linear-gradient(to bottom,#70d050,#50aa30);}
+.bar-item{
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+  border-radius:2px;color:#fff;font:11px Tahoma;
+  padding:4px 10px;min-width:110px;
+  display:flex;align-items:center;gap:6px;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.2);
+}
+.bar-clock{
+  margin-left:auto;color:#fff;font:11px Tahoma;
+  text-align:center;padding:4px 10px;
+  background:rgba(0,0,0,.12);border:1px solid rgba(0,0,0,.25);min-width:56px;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:16px;height:16px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{
+  background:var(--bg);border:1px solid;
+  border-color:var(--hi) var(--dk) var(--dk) var(--hi);min-height:20px;
+}
+::-webkit-scrollbar-thumb:hover{background:var(--hover);}
+
+@media(max-width:640px){
+  body{padding:6px 6px 48px;}
+  .stats-grid{grid-template-columns:repeat(2,1fr);}
+  .detail-layout{flex-direction:column;}
+  .detail-poster-col{width:100%;}
+  .detail-poster,.detail-poster-ph{width:100%;max-width:200px;}
+}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="ld-title">◈ MediaLog</div>
+  <div class="ld-track"><div class="ld-bar"></div></div>
+  <div style="font-size:11px;color:rgba(255,255,255,.7)">Loading…</div>
+</div>
+
+<div class="xp-win">
+  <div class="xp-title">
+    <span class="ti-icon">◈</span>
+    <span class="ti-text">MediaLog</span>
+    <div class="ti-btns">
+      <button class="ti-btn">_</button>
+      <button class="ti-btn">□</button>
+      <button class="ti-btn close">✕</button>
+    </div>
+  </div>
+  <div id="app"></div>
+</div>
+
+<div class="xp-bar">
+  <button class="start-btn">⊞ start</button>
+  <div class="bar-item">◈ MediaLog</div>
+  <div class="bar-clock" id="clock">12:00</div>
+</div>
+
+<!-- Poster picker modal -->
+<div class="p-modal" id="pModal">
+  <div class="p-win">
+    <div class="p-title">
+      <span>Choose Poster</span>
+      <button onclick="closePosterModal()" class="xp-btn" style="padding:1px 6px">✕</button>
+    </div>
+    <div class="p-body" id="pOptions"></div>
+    <div class="p-foot">
+      <button onclick="confirmPoster()" class="xp-btn primary">OK</button>
+      <button onclick="closePosterModal()" class="xp-btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js" crossorigin="anonymous"></script>
+
+<script>
+/* ── Clock ── */
+function updateClock(){
+  const d=new Date();
+  document.getElementById('clock').textContent=
+    d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+}
+updateClock(); setInterval(updateClock,1000);
+
+/* ── Config ── */
+const TMDB = '69781acb10d89f4fceb228e34c5bd7bd';
+
+/* ── State ── */
+let _addType        = 'movie';
+let _selPoster      = '';
+let _pendingPosters = [];
+let _pendingPosterSel = '';
+
+/* ── C string helper ── */
+function cs(s){ return Module.stringToNewUTF8(s||''); }
+
+/* ── C Bridge ── */
+const C = {
+  nav(v,f){
+    const vp=cs(v),fp=cs(f);
+    Module._app_navigate(vp,fp);
+    Module._free(vp); Module._free(fp);
+  },
+  detail(id){ Module._app_detail(id|0); },
+  del(id)   { Module._app_delete(id|0); },
+  setType(t){
+    _addType=t;
+    const p=cs(t); Module._app_set_type(p); Module._free(p);
+  },
+  search(q){
+    clearTimeout(C._st);
+    C._st=setTimeout(()=>{const p=cs(q);Module._app_search(p);Module._free(p);},150);
+  },
+  _st:null,
+  submit(){
+    const title=(document.getElementById('ft')?.value||'').trim();
+    if(!title){document.getElementById('ft')?.focus();return;}
+    const year  =parseInt(document.getElementById('fy')?.value)||0;
+    const status=document.getElementById('fs')?.value||'want';
+    const rating=parseFloat(document.getElementById('fr')?.value)||0;
+    const notes =document.getElementById('fn')?.value||'';
+    const fav   =document.getElementById('ff')?.checked?1:0;
+    const poster=_selPoster||document.getElementById('fp')?.value||'';
+    const dir   =document.getElementById('fd')?.value||'';
+    const cast  =document.getElementById('fc')?.value||'';
+
+    const tp=cs(title),yp=cs(_addType),sp=cs(status);
+    const np=cs(notes),pp=cs(poster),dp=cs(dir),cp=cs(cast);
+    Module._app_submit(tp,yp,year,sp,rating,np,fav,pp,dp,cp);
+    Module._free(tp);Module._free(yp);Module._free(sp);
+    Module._free(np);Module._free(pp);Module._free(dp);Module._free(cp);
+  }
+};
+
+/* ── APIs ── */
+async function apiSearch(q,type){
+  if(!q||q.length<2) return [];
+  try{
+    if(type==='movie') return await tmdb(q,'movie');
+    if(type==='tv')    return await tmdb(q,'tv');
+    if(type==='book')  return await books(q);
+    if(type==='album') return await albums(q);
+    return [];
+  }catch(e){console.warn('AC:',e);return [];}
+}
+
+async function tmdb(q,type){
+  const r=await fetch(
+    `https://api.themoviedb.org/3/search/${type}?api_key=${TMDB}&query=${encodeURIComponent(q)}`
+  );
+  const d=await r.json();
+  return (d.results||[]).slice(0,7).map(m=>({
+    id:      m.id,
+    title:   type==='movie'?m.title:m.name,
+    year:    (type==='movie'?m.release_date:m.first_air_date||'').slice(0,4),
+    desc:    m.overview||'',
+    thumb:   m.poster_path?`https://image.tmdb.org/t/p/w92${m.poster_path}`:null,
+    poster:  m.poster_path?`https://image.tmdb.org/t/p/w342${m.poster_path}`:null,
+    icon:    type==='movie'?'⬡':'◫',_type:type,_id:m.id
+  }));
+}
+
+async function tmdbCredits(id,type){
+  const r=await fetch(`https://api.themoviedb.org/3/${type}/${id}/credits?api_key=${TMDB}`);
+  const d=await r.json();
+  const cast=(d.cast||[]).slice(0,6).map(c=>c.name).join(', ');
+  const crew=d.crew||[];
+  const director=type==='movie'
+    ?(crew.find(c=>c.job==='Director')?.name||'')
+    :(crew.find(c=>c.department==='Directing')?.name||'');
+  return {cast,director};
+}
+
+async function tmdbPosters(id,type){
+  const r=await fetch(`https://api.themoviedb.org/3/${type}/${id}/images?api_key=${TMDB}`);
+  const d=await r.json();
+  return (d.posters||[]).slice(0,12).map(p=>`https://image.tmdb.org/t/p/w185${p.file_path}`);
+}
+
+async function books(q){
+  const r=await fetch(
+    `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=7`
+    +`&fields=key,title,author_name,first_publish_year,cover_i`
+  );
+  const d=await r.json();
+  return (d.docs||[]).slice(0,7).map(b=>({
+    title:  b.title,
+    year:   b.first_publish_year?String(b.first_publish_year):'',
+    desc:   b.author_name?`by ${b.author_name.slice(0,2).join(', ')}` :'',
+    thumb:  b.cover_i?`https://covers.openlibrary.org/b/id/${b.cover_i}-S.jpg`:null,
+    poster: b.cover_i?`https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg`:null,
+    icon:   '◈',
+    director: b.author_name?b.author_name.slice(0,2).join(', '):'',cast:''
+  }));
+}
+
+async function albums(q){
+  const r=await fetch(
+    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=album&limit=7`
+  );
+  const d=await r.json();
+  return (d.results||[]).map(a=>({
+    title:  a.collectionName,
+    year:   a.releaseDate?a.releaseDate.slice(0,4):'',
+    desc:   `by ${a.artistName}`,
+    thumb:  a.artworkUrl100?a.artworkUrl100.replace('100x100bb','60x60bb'):null,
+    poster: a.artworkUrl100?a.artworkUrl100.replace('100x100bb','600x600bb'):null,
+    icon:   '◎',
+    director: a.artistName||'', cast:''
+  }));
+}
+
+/* ── Autocomplete UI ── */
+let _acRes=[], _acIdx=-1, _acTmr=null;
+
+function attachAC(){
+  const inp=document.getElementById('ft');
+  if(!inp||inp.dataset.ac) return;
+  inp.dataset.ac='1';
+
+  const wrap=document.createElement('div');
+  wrap.className='ac-wrap';
+  inp.parentNode.insertBefore(wrap,inp);
+  wrap.appendChild(inp);
+
+  const drop=document.createElement('div');
+  drop.className='ac-drop';
+  wrap.appendChild(drop);
+
+  inp.addEventListener('input',()=>{
+    clearTimeout(_acTmr);
+    _acTmr=setTimeout(async()=>{
+      const q=inp.value.trim();
+      if(q.length<2){drop.style.display='none';return;}
+      _acRes=await apiSearch(q,_addType);
+      renderDrop(drop,_acRes);
+    },300);
+  });
+
+  inp.addEventListener('keydown',e=>{
+    const items=drop.querySelectorAll('.ac-item');
+    if(!items.length) return;
+    if(e.key==='ArrowDown'){_acIdx=Math.min(_acIdx+1,items.length-1);hlItem(items);e.preventDefault();}
+    else if(e.key==='ArrowUp'){_acIdx=Math.max(_acIdx-1,0);hlItem(items);e.preventDefault();}
+    else if(e.key==='Enter'&&_acIdx>=0){pickResult(_acRes[_acIdx]);drop.style.display='none';e.preventDefault();}
+    else if(e.key==='Escape') drop.style.display='none';
+  });
+  document.addEventListener('click',e=>{if(!wrap.contains(e.target))drop.style.display='none';});
+}
+
+function renderDrop(drop,results){
+  if(!results.length){drop.style.display='none';return;}
+  _acIdx=-1;
+  drop.innerHTML=results.map((r,i)=>`
+    <div class="ac-item" data-i="${i}">
+      ${r.thumb?`<img class="ac-thumb" src="${r.thumb}" loading="lazy">`:`<div class="ac-ph">${r.icon}</div>`}
+      <div>
+        <div class="ac-name">${r.title}${r.year?` (${r.year})`:''}</div>
+        <div class="ac-sub">${(r.desc||'').slice(0,60)}${(r.desc||'').length>60?'…':''}</div>
+      </div>
+    </div>`).join('');
+  drop.style.display='block';
+  drop.querySelectorAll('.ac-item').forEach((el,i)=>{
+    el.addEventListener('mousedown',e=>{e.preventDefault();pickResult(results[i]);drop.style.display='none';});
+  });
+}
+
+function hlItem(items){
+  items.forEach((el,i)=>el.classList.toggle('ac-on',i===_acIdx));
+  items[_acIdx]?.scrollIntoView({block:'nearest'});
+}
+
+async function pickResult(r){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+  set('ft',r.title); if(r.year) set('fy',r.year);
+  set('fn', r.desc||'');
+
+  _selPoster=r.poster||'';
+  set('fp',_selPoster);
+  showPreview(_selPoster);
+
+  const hint=document.getElementById('poster-hint');
+
+  if((r._type==='movie'||r._type==='tv')&&r._id){
+    try{
+      const cr=await tmdbCredits(r._id,r._type);
+      set('fd',cr.director); set('fc',cr.cast);
+    }catch(e){}
+    try{
+      _pendingPosters=await tmdbPosters(r._id,r._type);
+      if(r.poster) _pendingPosters=[r.poster,..._pendingPosters.filter(p=>p!==r.poster)];
+    }catch(e){ _pendingPosters=r.poster?[r.poster]:[]; }
+  } else {
+    set('fd',r.director||''); set('fc',r.cast||'');
+    _pendingPosters=r.poster?[r.poster]:[];
+  }
+
+  if(hint) hint.textContent=_pendingPosters.length
+    ?`${_pendingPosters.length} poster${_pendingPosters.length>1?'s':''} available`
+    :'No posters found';
+}
+
+function showPreview(url){
+  const el=document.getElementById('poster-preview');
+  if(!el) return;
+  if(url){el.src=url;el.style.display='block';}
+  else el.style.display='none';
+}
+
+/* ── Poster Modal ── */
+function openPosterModal(){
+  if(!_pendingPosters.length){alert('Search for a title first to load posters.');return;}
+  const body=document.getElementById('pOptions');
+  body.innerHTML=_pendingPosters.map(url=>`
+    <div class="p-opt${_selPoster===url?' sel':''}" data-url="${url}"
+         onclick="selectPOpt(this)">
+      <img src="${url}" loading="lazy">
+    </div>`).join('');
+  document.getElementById('pModal').classList.add('open');
+}
+function selectPOpt(el){
+  document.querySelectorAll('.p-opt').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel');
+  _pendingPosterSel=el.dataset.url;
+}
+function confirmPoster(){
+  if(_pendingPosterSel){
+    _selPoster=_pendingPosterSel;
+    const fp=document.getElementById('fp');
+    if(fp) fp.value=_selPoster;
+    showPreview(_selPoster);
+  }
+  closePosterModal();
+}
+function closePosterModal(){
+  document.getElementById('pModal').classList.remove('open');
+  _pendingPosterSel='';
+}
+
+/* ── MutationObserver: re-attach after C re-renders ── */
+const _obs=new MutationObserver(()=>{
+  const fp=document.getElementById('fp');
+  if(fp){
+    attachAC();
+    if(!fp.value){ _selPoster=''; _pendingPosters=[]; }
+    showPreview(_selPoster||fp.value);
+  } else {
+    _selPoster=''; _pendingPosters=[];
+  }
+});
+document.addEventListener('DOMContentLoaded',()=>{
+  _obs.observe(document.getElementById('app'),{childList:true,subtree:false});
+});
+</script>
+
+<script>
+var Module={
+  print:()=>{},
+  printErr:(s)=>console.warn('[wasm]',s),
+  onRuntimeInitialized(){
+    initSqlJs({
+      locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
+    }).then(SQL=>{
+      Module._SQL=SQL;
+      Module._app_init();
+      document.getElementById('loading').classList.add('hidden');
+    }).catch(err=>{
+      console.error('sql.js failed:',err);
+      document.getElementById('loading').textContent='Error loading database. Check console.';
+    });
+  }
+};
+</script>
+<script src="app.js"></script>
+</body>
+</html>
